@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Inspector Login | Legal Metrology</title><link rel="stylesheet" href="css/style.css"></head>
+<body>
+  <div class="login-page">
+    <section class="login-intro">
+      <div class="login-copy">
+        <div class="brand-mark" aria-hidden="true">LM</div>
+        <p class="eyebrow" style="color:#8fc4e6">Government of India · Department of Consumer Affairs</p>
+        <h1>Legal Metrology<br>Compliance Inspection System</h1>
+        <p>A secure workspace for field inspections, evidence management and market compliance monitoring.</p>
+        <div class="login-points"><span>Standardised inspection workflows</span><span>Evidence-led compliance decisions</span><span>Circle and district-level reporting</span></div>
+      </div>
+    </section>
+    <section class="login-panel">
+      <form class="card login-card" onsubmit="event.preventDefault(); window.location.href='dashboard.html'">
+        <p class="eyebrow">Inspector access</p><h2>Sign in to your account</h2><p class="heading-note">Use your department credentials to continue.</p>
+        <div class="field"><label for="employee-id">Employee ID</label><input id="employee-id" type="text" placeholder="Enter employee ID" required></div>
+        <div class="field mt-18"><label for="password">Password</label><input id="password" type="password" placeholder="Enter password" required></div>
+        <div class="mt-18" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><label style="font-weight:500"><input type="checkbox" style="width:auto;margin-right:7px"> Remember this device</label><a class="small" href="#" style="color:var(--blue-600)">Forgot password?</a></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:24px" type="submit">Sign in securely <span aria-hidden="true">→</span></button>
+        <div class="login-footer">Authorised users only · All access is logged for audit purposes</div>
+      </form>
+    </section>
+  </div>
+</body>
+</html>

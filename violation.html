@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Violations & Evidence | Legal Metrology</title><link rel="stylesheet" href="css/style.css"></head><body data-page="violation" data-title="Violations & Evidence"><div data-content>
+<div class="page-heading"><div><p class="eyebrow">Current real inspection</p><h1>Violation details & evidence</h1><p class="heading-note" id="inspectionHeading">Loading inspection data...</p></div></div>
+<section class="card"><div class="card-header"><h2>Confirmed Violations</h2><span id="violationStatus" class="badge badge-neutral">Loading...</span></div><div class="card-pad" id="violations"><p class="muted">Loading compliance checks...</p></div></section>
+<section class="card mt-18"><div class="card-header"><h2>Manual Review Required</h2></div><div class="card-pad" id="reviews"><p class="muted">Loading review-required checks...</p></div></section>
+<section class="card mt-18"><div class="card-header"><h2>Evidence</h2></div><div class="card-pad" id="evidenceContent"><p class="muted">Select an evidence action from a check.</p></div></section>
+</div><script src="js/common.js"></script><script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const inspectionId = new URLSearchParams(window.location.search).get('inspectionId');
+  const heading = document.getElementById('inspectionHeading');
+  const violations = document.getElementById('violations');
+  const reviews = document.getElementById('reviews');
+  const status = document.getElementById('violationStatus');
+  if (!inspectionId) {
+    heading.textContent = 'No inspection data available.';
+    violations.innerHTML = '<p class="muted">No confirmed violations for this inspection.</p>';
+    reviews.innerHTML = '<p class="muted">No inspection data available.</p>';
+    return;
+  }
+  heading.textContent = `Inspection ID: ${inspectionId}`;
+  try {
+    const response = await fetch(`${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}/compliance`, { method: 'POST' });
+    const compliance = await response.json();
+    if (!response.ok) throw new Error(compliance.detail || `Compliance request failed (${response.status})`);
+    const confirmed = (compliance.checks || []).filter(check => check.status === 'VIOLATION');
+    const review = (compliance.checks || []).filter(check => check.status === 'REVIEW_REQUIRED');
+    status.textContent = compliance.overall_status || 'Unavailable';
+    status.className = `badge ${confirmed.length ? 'badge-danger' : review.length ? 'badge-warning' : 'badge-success'}`;
+    violations.innerHTML = confirmed.length ? confirmed.map(check => renderCheck(check, compliance.checks, true)).join('') : '<p class="muted">No confirmed violations for this inspection.</p>';
+    reviews.innerHTML = review.length ? review.map(check => renderCheck(check, compliance.checks, false)).join('') : '<p class="muted">No manual review checks for this inspection.</p>';
+    document.querySelectorAll('[data-evidence-index]').forEach(button => button.addEventListener('click', () => showEvidence(compliance.checks[Number(button.dataset.evidenceIndex)], inspectionId)));
+  } catch (error) {
+    status.textContent = 'Unavailable';
+    status.className = 'badge badge-danger';
+    violations.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+    reviews.innerHTML = '<p class="muted">No inspection data available.</p>';
+  }
+});
+
+function renderCheck(check, checks, confirmed) {
+  const index = checks.indexOf(check);
+  return `<article class="card mt-18"><p><strong>${confirmed ? 'Confirmed violation' : 'Manual Review Required'}</strong> · ${escapeHtml(check.field_name || check.field || '')}</p><p><strong>Rule:</strong> ${escapeHtml(check.rule_id || '')} · ${escapeHtml(check.rule_version || '')}</p><p><strong>Reason:</strong> ${escapeHtml(check.reason || '')}</p><p><strong>Source text:</strong> ${escapeHtml(check.source_text || 'Unavailable')}</p><p><strong>Confidence:</strong> ${check.confidence == null ? 'Unavailable' : `${(Number(check.confidence) * 100).toFixed(1)}%`}</p><p><strong>Evidence:</strong> ${check.evidence_bbox ? `<button class="btn" type="button" data-evidence-index="${index}">View evidence</button>` : 'Evidence region unavailable — manual verification required.'}</p>`;
+}
+
+function showEvidence(check, inspectionId) {
+  const content = document.getElementById('evidenceContent');
+  if (!check || !check.evidence_bbox) {
+    content.innerHTML = '<p class="muted">Evidence region unavailable — manual verification required.</p>';
+    return;
+  }
+  content.innerHTML = `<p><strong>${escapeHtml(check.field_name || check.field || '')}</strong> · ${escapeHtml(check.source_text || 'Source text unavailable')}</p><div style="position:relative;max-width:724px"><img id="evidenceImage" src="${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}/image" alt="Uploaded inspection package" style="display:block;width:100%;height:auto"><canvas id="evidenceCanvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas></div>`;
+  const image = document.getElementById('evidenceImage');
+  image.addEventListener('load', () => drawEvidence(image, check.evidence_bbox));
+}
+
+function drawEvidence(image, bbox) {
+  const canvas = document.getElementById('evidenceCanvas');
+  const points = Array.isArray(bbox) ? bbox.flat(Infinity) : [];
+  if (points.length < 4) return;
+  const coordinates = [];
+  for (let index = 0; index + 1 < points.length; index += 2) coordinates.push([Number(points[index]), Number(points[index + 1])]);
+  const scaleX = image.clientWidth / image.naturalWidth;
+  const scaleY = image.clientHeight / image.naturalHeight;
+  canvas.width = image.clientWidth;
+  canvas.height = image.clientHeight;
+  const context = canvas.getContext('2d');
+  context.fillStyle = 'rgba(217, 91, 79, .18)';
+  context.strokeStyle = '#c73c3c';
+  context.lineWidth = 3;
+  context.beginPath();
+  coordinates.forEach(([x, y], index) => index ? context.lineTo(x * scaleX, y * scaleY) : context.moveTo(x * scaleX, y * scaleY));
+  context.closePath(); context.fill(); context.stroke();
+}
+
+function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
+</script></body></html>

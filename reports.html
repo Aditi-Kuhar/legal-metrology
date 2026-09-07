@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Reports & History | Legal Metrology</title><link rel="stylesheet" href="css/style.css"></head><body data-page="reports" data-title="Reports & Inspection History"><div data-content>
+<div class="page-heading"><div><p class="eyebrow">Records · Real inspection data</p><h1>Reports & inspection history</h1><p class="heading-note">Historical reports will appear when a persistent inspection store is available.</p></div></div>
+<section class="card"><div class="card-pad"><h2>No inspections have been completed yet.</h2><p class="muted">Inspection history is not displayed until it is backed by real stored inspection data. A report can be generated from the current completed inspection.</p><a id="currentReport" class="btn btn-primary mt-18" hidden>Open current inspection report</a></div></section>
+</div><script src="js/common.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+	const inspectionId = new URLSearchParams(window.location.search).get('inspectionId') || sessionStorage.getItem('currentInspectionId');
+	const link = document.getElementById('currentReport');
+	if (inspectionId) {
+		link.hidden = false;
+		link.href = `result.html?inspectionId=${encodeURIComponent(inspectionId)}`;
+	}
+});
+</script>
+</body></html>

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dashboard | Legal Metrology</title><link rel="stylesheet" href="css/style.css"></head><body data-page="dashboard" data-title="Inspector Dashboard"><div data-content>
+<div class="page-heading"><div><p class="eyebrow">Inspector workspace</p><h1>Compliance overview</h1><p class="heading-note">Saved inspections generated from real uploaded package images.</p></div><div class="actions"><a class="btn btn-primary" href="inspection.html">Start new inspection <span aria-hidden="true">→</span></a></div></div>
+<section class="card"><div class="card-header"><div><h2>Saved inspections</h2><p class="section-note">Only completed inspections with real OCR, extraction, and compliance data appear here.</p></div><span id="inspectionCount" class="badge badge-neutral">Loading...</span></div><div class="table-wrap" id="inspectionTable"><p class="muted">Loading saved inspections...</p></div></section>
+</div><script src="js/common.js"></script><script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const table = document.getElementById('inspectionTable');
+  const count = document.getElementById('inspectionCount');
+  try {
+    const response = await fetch(`${window.API_BASE_URL}/api/inspections`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || `Unable to load inspections (${response.status})`);
+    const inspections = payload.inspections || [];
+    count.textContent = `${inspections.length} saved`;
+    if (!inspections.length) {
+      table.innerHTML = '<p class="muted">No inspections have been completed yet.</p>';
+      return;
+    }
+    table.innerHTML = `<table><thead><tr><th>Inspection ID</th><th>Product</th><th>Manufacturer</th><th>Date</th><th>Status</th><th>Score</th><th>Actions</th></tr></thead><tbody>${inspections.map(renderInspection).join('')}</tbody></table>`;
+    table.querySelectorAll('[data-delete-id]').forEach(button => button.addEventListener('click', () => deleteInspection(button.dataset.deleteId)));
+  } catch (error) {
+    count.textContent = 'Unavailable';
+    table.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+  }
+
+});
+
+function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
+
+function renderInspection(inspection) {
+  const statusClass = inspectionStatusClass(inspection.overall_status);
+  const score = inspection.compliance_score == null ? 'Unavailable' : `${Number(inspection.compliance_score)}%`;
+  const analysis = `result.html?inspectionId=${encodeURIComponent(inspection.inspection_id)}`;
+  return `<tr><td><strong>${escapeHtml(inspection.inspection_id)}</strong></td><td>${escapeHtml(inspection.product_name)}</td><td>${escapeHtml(inspection.manufacturer)}</td><td>${escapeHtml(inspection.inspection_date)}</td><td><span class="badge ${statusClass}">${escapeHtml(inspection.overall_status || 'Unavailable')}</span></td><td>${score}</td><td><a class="btn" href="${analysis}">View Analysis</a> <button class="btn" type="button" data-delete-id="${escapeHtml(inspection.inspection_id)}">Delete</button></td></tr>`;
+}
+
+function inspectionStatusClass(status) {
+  if (status === 'COMPLIANT') return 'badge-success';
+  if (status === 'NON_COMPLIANT') return 'badge-danger';
+  return 'badge-warning';
+}
+
+async function deleteInspection(inspectionId) {
+  if (!window.confirm(`Delete inspection ${inspectionId}?`)) return;
+  const response = await fetch(`${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}`, { method: 'DELETE' });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    window.alert(payload.detail || `Delete failed (${response.status})`);
+    return;
+  }
+  window.location.reload();
+}
+</script></body></html>

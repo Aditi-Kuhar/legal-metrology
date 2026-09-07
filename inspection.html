@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Inspection | Legal Metrology</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .inspection-workflow { display: flex; align-items: center; gap: 0; margin-bottom: 25px; padding: 15px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .workflow-step { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .workflow-step.current { color: var(--navy-900); }
+    .workflow-number { width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid #b8c8d5; border-radius: 50%; background: #fff; font-size: 11px; }
+    .workflow-step.current .workflow-number { color: #fff; border-color: var(--navy-800); background: var(--navy-800); }
+    .workflow-line { height: 1px; flex: 1; min-width: 18px; margin: 0 13px; background: var(--line); }
+    .inspection-card { height: 100%; }
+    .required::after { content: " *"; color: var(--red); }
+    .section-note { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .upload-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
+    .package-upload { position: relative; min-height: 194px; overflow: hidden; border: 1px solid #c9d7e2; border-radius: 5px; background: #fbfdfe; }
+    .package-upload.has-file { border-color: var(--green); background: #f7fcf9; }
+    .package-upload.drag-over { border-color: var(--blue-600); background: var(--blue-100); }
+    .upload-trigger { min-height: 194px; width: 100%; display: grid; place-items: center; padding: 17px 10px; border: 0; color: var(--muted); background: transparent; text-align: center; }
+    .upload-trigger:hover { color: var(--navy-900); background: var(--blue-100); }
+    .upload-trigger:focus-visible, .upload-action:focus-visible, .remove-image:focus-visible { outline: 3px solid rgba(23,105,170,.25); outline-offset: -3px; }
+    .upload-icon { width: 39px; height: 39px; display: grid; place-items: center; margin: 0 auto 9px; border-radius: 50%; color: var(--blue-600); background: var(--blue-100); font-size: 20px; }
+    .upload-title { display: block; color: var(--navy-900); font-size: 13px; font-weight: 700; }
+    .upload-help { display: block; margin-top: 4px; font-size: 11px; }
+    .upload-preview { position: absolute; inset: 0; display: none; background: #eff5f8; }
+    .package-upload.has-file .upload-preview { display: block; }
+    .upload-preview img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .preview-footer { position: absolute; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px; color: #fff; background: rgba(9,35,63,.9); }
+    .preview-name { min-width: 0; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .preview-controls { display: flex; gap: 5px; flex-shrink: 0; }
+    .upload-action, .remove-image { padding: 4px 6px; border: 1px solid rgba(255,255,255,.55); border-radius: 3px; color: #fff; background: transparent; font-size: 10px; }
+    .upload-action:hover, .remove-image:hover { background: rgba(255,255,255,.17); }
+    .upload-error { min-height: 17px; margin: 6px 1px 0; color: var(--red); font-size: 11px; }
+    .optional-tag { color: var(--amber); font-size: 11px; font-weight: 700; }
+    .info-icon { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 4px; border-radius: 50%; color: var(--blue-600); background: var(--blue-100); font-size: 10px; font-weight: 700; }
+    .processing-note { display: none; margin-top: 13px; color: var(--navy-800); font-size: 12px; }
+    .processing-note.visible { display: block; }
+    .spinner { width: 14px; height: 14px; display: inline-block; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 1050px) { .upload-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 760px) { .inspection-workflow { align-items: flex-start; overflow-x: auto; padding: 13px 14px; } .workflow-step { flex-direction: column; gap: 4px; font-size: 10px; } .workflow-line { min-width: 20px; margin-top: 12px; } .upload-grid { grid-template-columns: 1fr 1fr; gap: 10px; } .package-upload, .upload-trigger { min-height: 155px; } .upload-help { display: none; } .preview-footer { display: block; } .preview-controls { margin-top: 5px; } }
+  </style>
+</head>
+<body data-page="inspection" data-title="New Inspection">
+  <div data-content>
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">Field workflow · Step 1 of 4</p>
+        <h1>Start a new inspection</h1>
+        <p class="heading-note">Capture product information and package evidence for a guided review.</p>
+      </div>
+      <div class="actions"><a class="btn" href="dashboard.html">Cancel</a></div>
+    </div>
+
+    <nav class="inspection-workflow" aria-label="Inspection workflow">
+      <div class="workflow-step current"><span class="workflow-number">1</span><span>Upload</span></div><span class="workflow-line"></span>
+      <div class="workflow-step"><span class="workflow-number">2</span><span>Analyze</span></div><span class="workflow-line"></span>
+      <div class="workflow-step"><span class="workflow-number">3</span><span>Verify</span></div><span class="workflow-line"></span>
+      <div class="workflow-step"><span class="workflow-number">4</span><span>Report</span></div>
+    </nav>
+
+    <form id="inspectionForm" novalidate>
+      <section class="card inspection-card">
+        <div class="card-header"><div><h2>Inspection Information</h2><p class="section-note">Required details for the inspection record</p></div><span class="badge badge-neutral">New draft</span></div>
+        <div class="card-pad"><div class="form-grid">
+          <div class="field"><label class="required" for="productCategory">Product category</label><select id="productCategory" required><option value="">Select a category</option><option>Packaged commodities</option><option>Weights and measures</option><option>Retail goods</option><option>E-commerce product</option><option>Other</option></select></div>
+          <div class="field"><label class="required" for="productName">Product name</label><input id="productName" required placeholder="Enter product name"></div>
+          <div class="field"><label class="required" for="manufacturer">Manufacturer / packer / importer</label><input id="manufacturer" required placeholder="Enter registered name"></div>
+          <div class="field"><label class="required" for="inspectionPlace">Place of inspection</label><input id="inspectionPlace" required placeholder="Market, shop or premises address"></div>
+          <div class="field"><label class="required" for="inspectionDate">Inspection date</label><input id="inspectionDate" type="date" required></div>
+        </div></div>
+      </section>
+
+      <section class="card inspection-card mt-18">
+        <div class="card-header"><div><h2>Package Image Upload</h2><p class="section-note">Upload clear images of the package. At least one image is required.</p></div><span class="small muted">JPG, PNG or WEBP · Max 10 MB each</span></div>
+        <div class="card-pad"><div class="upload-grid">
+          <div><div class="package-upload" data-upload-card="front"><button class="upload-trigger" type="button" aria-label="Select front side package image"><span><span class="upload-icon" aria-hidden="true">↑</span><span class="upload-title">Front Side</span><span class="upload-help">Select an image</span></span></button><input class="image-input" type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Front side package image"><div class="upload-preview"><img alt="Front side package preview"><div class="preview-footer"><span class="preview-name"></span><span class="preview-controls"><button class="upload-action" type="button">Replace</button><button class="remove-image" type="button">Remove</button></span></div></div></div><div class="upload-error" aria-live="polite"></div></div>
+          <div><div class="package-upload" data-upload-card="back"><button class="upload-trigger" type="button" aria-label="Select back side package image"><span><span class="upload-icon" aria-hidden="true">↑</span><span class="upload-title">Back Side</span><span class="upload-help">Select an image</span></span></button><input class="image-input" type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Back side package image"><div class="upload-preview"><img alt="Back side package preview"><div class="preview-footer"><span class="preview-name"></span><span class="preview-controls"><button class="upload-action" type="button">Replace</button><button class="remove-image" type="button">Remove</button></span></div></div></div><div class="upload-error" aria-live="polite"></div></div>
+          <div><div class="package-upload" data-upload-card="left"><button class="upload-trigger" type="button" aria-label="Select left side package image"><span><span class="upload-icon" aria-hidden="true">↑</span><span class="upload-title">Left Side</span><span class="upload-help">Select an image</span></span></button><input class="image-input" type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Left side package image"><div class="upload-preview"><img alt="Left side package preview"><div class="preview-footer"><span class="preview-name"></span><span class="preview-controls"><button class="upload-action" type="button">Replace</button><button class="remove-image" type="button">Remove</button></span></div></div></div><div class="upload-error" aria-live="polite"></div></div>
+          <div><div class="package-upload" data-upload-card="right"><button class="upload-trigger" type="button" aria-label="Select right side package image"><span><span class="upload-icon" aria-hidden="true">↑</span><span class="upload-title">Right Side</span><span class="upload-help">Select an image</span></span></button><input class="image-input" type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Right side package image"><div class="upload-preview"><img alt="Right side package preview"><div class="preview-footer"><span class="preview-name"></span><span class="preview-controls"><button class="upload-action" type="button">Replace</button><button class="remove-image" type="button">Remove</button></span></div></div></div><div class="upload-error" aria-live="polite"></div></div>
+        </div><p id="imageRequirement" class="small muted mt-18" aria-live="polite">No package image selected yet. Add at least one image to continue.</p></div>
+      </section>
+
+      <section class="grid grid-2 mt-18">
+        <div class="card inspection-card"><div class="card-header"><div><h2>Optional E-commerce Verification</h2><p class="section-note"><span class="optional-tag">Optional</span> · Not available in the current backend</p></div></div><div class="card-pad"><div class="field"><label for="listingUrl">E-commerce product URL</label><input id="listingUrl" type="url" placeholder="https://example.com/product"></div><button id="fetchListing" class="btn mt-18" type="button">Fetch Listing</button><p id="listingMessage" class="small muted" aria-live="polite">No e-commerce data available.</p></div></div>
+        <div class="card inspection-card"><div class="card-header"><div><h2>Optional Calibration Reference</h2><p class="section-note"><span class="optional-tag">Optional</span> · Reference image for measurement</p></div></div><div class="card-pad"><label class="empty-upload" for="calibrationImage" style="min-height:132px;cursor:pointer"><span><span class="upload-symbol">↑</span><strong>Choose reference image</strong><span class="small muted" style="display:block;margin-top:5px">May be used later for physical font-size measurement.</span></span></label><input id="calibrationImage" type="file" accept="image/jpeg,image/png,image/webp" hidden><p id="calibrationName" class="small muted mb-0" aria-live="polite">No calibration image selected.</p></div></div>
+      </section>
+
+      <section class="card mt-18"><div class="card-pad"><div class="actions"><button id="startInspection" class="btn btn-primary" type="button">Start Inspection <span aria-hidden="true">→</span></button></div><p id="processingNote" class="processing-note" aria-live="polite"></p></div></section>
+    </form>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    window.addEventListener('load', () => {
+      const form = document.getElementById('inspectionForm');
+      const imageCards = [...document.querySelectorAll('[data-upload-card]')];
+      const dateInput = document.getElementById('inspectionDate');
+      const processingNote = document.getElementById('processingNote');
+      const startButton = document.getElementById('startInspection');
+      const imageRequirement = document.getElementById('imageRequirement');
+      const objectUrls = new Map();
+
+      const today = new Date();
+      const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      dateInput.value = localDate;
+
+      const updateImageRequirement = () => {
+        const selected = imageCards.filter(card => card.querySelector('.image-input').files.length > 0).length;
+        const imageWord = selected === 1 ? 'image' : 'images';
+        imageRequirement.textContent = selected ? `${selected} package ${imageWord} selected.` : 'No package image selected yet. Add at least one image to continue.';
+        imageRequirement.style.color = selected ? 'var(--green)' : 'var(--muted)';
+      };
+
+      imageCards.forEach(card => {
+        const input = card.querySelector('.image-input');
+        const trigger = card.querySelector('.upload-trigger');
+        const preview = card.querySelector('.upload-preview');
+        const previewImage = preview.querySelector('img');
+        const previewName = preview.querySelector('.preview-name');
+        const uploadError = card.parentElement.querySelector('.upload-error');
+        const chooseFile = () => input.click();
+
+        trigger.addEventListener('click', chooseFile);
+        preview.querySelector('.upload-action').addEventListener('click', chooseFile);
+        preview.querySelector('.remove-image').addEventListener('click', () => {
+          if (objectUrls.has(input)) URL.revokeObjectURL(objectUrls.get(input));
+          objectUrls.delete(input);
+          input.value = '';
+          card.classList.remove('has-file');
+          previewImage.removeAttribute('src');
+          previewName.textContent = '';
+          uploadError.textContent = '';
+          updateImageRequirement();
+        });
+        input.addEventListener('change', () => {
+          const file = input.files[0];
+          uploadError.textContent = '';
+          if (!file) return;
+          if (file.size > 10 * 1024 * 1024) {
+            uploadError.textContent = 'File exceeds the 10 MB limit.';
+            input.value = '';
+            return;
+          }
+          if (objectUrls.has(input)) URL.revokeObjectURL(objectUrls.get(input));
+          const url = URL.createObjectURL(file);
+          objectUrls.set(input, url);
+          previewImage.src = url;
+          previewName.textContent = file.name;
+          card.classList.add('has-file');
+          updateImageRequirement();
+        });
+        ['dragenter', 'dragover'].forEach(eventName => card.addEventListener(eventName, event => { event.preventDefault(); card.classList.add('drag-over'); }));
+        ['dragleave', 'drop'].forEach(eventName => card.addEventListener(eventName, event => { event.preventDefault(); card.classList.remove('drag-over'); }));
+        card.addEventListener('drop', event => {
+          const file = event.dataTransfer.files[0];
+          if (!file) return;
+          const transfer = new DataTransfer();
+          transfer.items.add(file);
+          input.files = transfer.files;
+          input.dispatchEvent(new Event('change'));
+        });
+      });
+
+      document.getElementById('calibrationImage').addEventListener('change', event => {
+        const file = event.target.files[0];
+        document.getElementById('calibrationName').textContent = file ? `Selected: ${file.name}` : 'No calibration image selected.';
+      });
+
+      document.getElementById('fetchListing').addEventListener('click', () => {
+        const message = document.getElementById('listingMessage');
+        message.textContent = 'No e-commerce data available.';
+        message.style.color = 'var(--muted)';
+      });
+
+      const selectedImages = () => imageCards
+        .map(card => card.querySelector('.image-input').files[0])
+        .filter(Boolean);
+
+      const readResponse = async response => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.detail || `Request failed (${response.status})`);
+        }
+        return payload;
+      };
+
+      startButton.addEventListener('click', async event => {
+        event.preventDefault();
+        const images = selectedImages();
+        const hasImage = images.length > 0;
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+        if (!hasImage) {
+          imageRequirement.textContent = 'Add at least one package image before starting the inspection.';
+          imageRequirement.style.color = 'var(--red)';
+          imageCards[0].querySelector('.upload-trigger').focus();
+          return;
+        }
+        startButton.disabled = true;
+        startButton.innerHTML = '<span class="spinner" aria-hidden="true"></span> Starting inspection';
+        processingNote.classList.add('visible');
+
+        try {
+          processingNote.textContent = 'Uploading...';
+          const formData = new FormData();
+          formData.append('product_category', document.getElementById('productCategory').value);
+          formData.append('product_name', document.getElementById('productName').value);
+          formData.append('manufacturer', document.getElementById('manufacturer').value);
+          formData.append('inspection_place', document.getElementById('inspectionPlace').value);
+          formData.append('inspection_date', document.getElementById('inspectionDate').value);
+          images.forEach(image => formData.append('images', image, image.name));
+
+          const inspection = await readResponse(await fetch(`${window.API_BASE_URL}/api/inspections`, {
+            method: 'POST',
+            body: formData,
+          }));
+
+          processingNote.textContent = 'Running OCR...';
+          const ocrData = new FormData();
+          ocrData.append('image', images[0], images[0].name);
+          const ocrResult = await readResponse(await fetch(
+            `${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspection.inspection_id)}/ocr`,
+            { method: 'POST', body: ocrData },
+          ));
+
+          sessionStorage.setItem(`ocr:${inspection.inspection_id}`, JSON.stringify(ocrResult));
+          sessionStorage.setItem('currentInspectionId', inspection.inspection_id);
+          processingNote.textContent = 'OCR completed';
+          window.location.href = `result.html?inspectionId=${encodeURIComponent(inspection.inspection_id)}`;
+        } catch (error) {
+          processingNote.textContent = `Unable to complete inspection: ${error.message}`;
+          processingNote.style.color = 'var(--red)';
+          startButton.disabled = false;
+          startButton.innerHTML = 'Start Inspection <span aria-hidden="true">→</span>';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

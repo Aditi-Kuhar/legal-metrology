@@ -1,0 +1,83 @@
+[
+  {
+    "rule_id": "LMPC-2011-001",
+    "field": "product_name",
+    "requirement": "Every pre-packaged commodity must declare its common or generic name.",
+    "severity": "HIGH",
+    "applicable_to": "pre-packaged commodities",
+    "rule_version": "LMPC Rules 2011; current Department overview",
+    "source": "Department of Consumer Affairs / LMPC Rules"
+  },
+  {
+    "rule_id": "LMPC-2011-002",
+    "field": "manufacturer_packer_importer",
+    "requirement": "Every package must declare the name and address of the manufacturer, packer or importer, as applicable.",
+    "severity": "HIGH",
+    "applicable_to": "pre-packaged commodities",
+    "rule_version": "LMPC Rules 2011; current Department overview",
+    "source": "Department of Consumer Affairs / LMPC Rules"
+  },
+  {
+    "rule_id": "LMPC-2011-003",
+    "field": "country_of_origin",
+    "requirement": "Country of origin must be declared for imported products.",
+    "severity": "MEDIUM",
+    "applicable_to": "imported pre-packaged commodities",
+    "rule_version": "LMPC Rules 2011; current Department overview",
+    "source": "Department of Consumer Affairs / LMPC Rules"
+  },
+  {
+    "rule_id": "LMPC-2011-004",
+    "field": "net_quantity",
+    "requirement": "The package must declare net quantity in the standard unit of weight, measure or number.",
+    "severity": "HIGH",
+    "applicable_to": "pre-packaged commodities",
+    "rule_version": "LMPC Rules 2011; current Department overview",
+    "source": "Department of Consumer Affairs / LMPC Rules"
+  },
+  {
+    "rule_id": "LMPC-2011-005",
+    "field": "month_year_of_manufacture_or_packing",
+    "requirement": "The package must declare the month and year of manufacture or packing.",
+    "severity": "HIGH",
+    "applicable_to": "pre-packaged commodities",
+    "rule_version": "LMPC Rules 2011; current Department overview",
+    "source": "Department of Consumer Affairs / LMPC Rules"
+  },
+  {
+    "rule_id": "LMPC-2011-006",
+    "field": "best_before_or_use_by",
+    "requirement": "Best before or use by information is required for commodities that may become unfit for human consumption.",
+    "severity": "MEDIUM",
+    "applicable_to": "food or other commodities with a consumption fitness period",
+    "rule_version": "LMPC Rules 2011; current Department overview",
+    "source": "Department of Consumer Affairs / LMPC Rules"
+  },
+  {
+    "rule_id": "LMPC-2011-007",
+    "field": "mrp",
+    "requirement": "The package must declare the retail sale price in the form of Maximum Retail Price (MRP), inclusive of taxes.",
+    "severity": "HIGH",
+    "applicable_to": "pre-packaged commodities offered for retail sale",
+    "rule_version": "LMPC Rules 2011; current Department overview",
+    "source": "Department of Consumer Affairs / LMPC Rules"
+  },
+  {
+    "rule_id": "LMPC-2011-008",
+    "field": "consumer_care",
+    "requirement": "The package must provide consumer care details sufficient to contact the responsible entity.",
+    "severity": "MEDIUM",
+    "applicable_to": "pre-packaged commodities",
+    "rule_version": "LMPC Rules 2011; current Department overview",
+    "source": "Department of Consumer Affairs / LMPC Rules"
+  },
+  {
+    "rule_id": "LMPC-2011-009",
+    "field": "unit_sale_price",
+    "requirement": "Unit sale price is checked where the applicable packaged-commodity requirement is established by the product and current amendment context.",
+    "severity": "LOW",
+    "applicable_to": "where applicable under current LMPC requirements and amendments",
+    "rule_version": "LMPC Rules 2011; current Department overview",
+    "source": "Department of Consumer Affairs / LMPC Rules"
+  }
+]

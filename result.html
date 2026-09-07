@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Inspection Result | Legal Metrology</title><link rel="stylesheet" href="css/style.css"></head><body data-page="result" data-title="Inspection Result"><div data-content>
+<div class="page-heading"><div><p class="eyebrow">Real inspection result</p><h1>Inspection result</h1><p class="heading-note" id="inspectionContext">Loading inspection data...</p></div><div class="actions"><button class="btn" data-action="print">Print result</button><button class="btn btn-primary" id="generateReport" type="button">Generate Compliance Report</button></div></div>
+<section class="card mt-18" id="rawOcrResults"><div class="card-header"><div><h2>Raw OCR Results</h2><p class="section-note">Text returned directly from PaddleOCR; no interpretation applied.</p></div><span id="ocrStatus" class="badge badge-neutral">Loading...</span></div><div class="card-pad"><p><strong>Inspection ID:</strong> <span id="ocrInspectionId">Loading...</span></p><div id="ocrDetections" class="table-wrap"><p class="muted">Loading OCR results...</p></div></div></section>
+<section class="card mt-18" id="extractedDeclarations"><div class="card-header"><div><h2>Extracted Declarations</h2><p class="section-note">Deterministic fields identified from the OCR text.</p></div><span id="extractionStatus" class="badge badge-neutral">Loading...</span></div><div class="table-wrap" id="declarationFields"><p class="muted">Loading extracted declarations...</p></div></section>
+<section class="card mt-18" id="complianceCheck"><div class="card-header"><div><h2>Compliance Check</h2><p class="section-note">Deterministic LMPC rule evaluation; uncertain OCR remains review required.</p></div><span id="complianceStatus" class="badge badge-neutral">Loading...</span></div><div class="card-pad"><p><strong>Compliance score:</strong> <span id="complianceScore">Loading...</span></p></div><div class="table-wrap" id="complianceFields"><p class="muted">Loading compliance checks...</p></div></section>
+<section class="card mt-18" id="evidencePanel"><div class="card-header"><h2>Evidence</h2></div><div class="card-pad" id="evidenceContent"><p class="muted">Select an evidence action from a compliance check.</p></div></section>
+</div><script src="js/common.js"></script><script>
+	document.addEventListener('DOMContentLoaded', async () => {
+		const inspectionId = new URLSearchParams(window.location.search).get('inspectionId');
+		const status = document.getElementById('ocrStatus');
+		const id = document.getElementById('ocrInspectionId');
+		const detections = document.getElementById('ocrDetections');
+		const extractionStatus = document.getElementById('extractionStatus');
+		const declarationFields = document.getElementById('declarationFields');
+		const inspectionContext = document.getElementById('inspectionContext');
+		const complianceStatus = document.getElementById('complianceStatus');
+		const complianceScore = document.getElementById('complianceScore');
+		const complianceFields = document.getElementById('complianceFields');
+		const generateReport = document.getElementById('generateReport');
+		generateReport.addEventListener('click', async () => {
+			if (!inspectionId) return;
+			const originalText = generateReport.textContent;
+			generateReport.disabled = true;
+			generateReport.textContent = 'Generating report...';
+			try {
+				const response = await fetch(`${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}/report`);
+				if (!response.ok) {
+					const payload = await response.json().catch(() => ({}));
+					throw new Error(payload.detail || `Report generation failed (${response.status})`);
+				}
+				const blob = await response.blob();
+				const url = URL.createObjectURL(blob);
+				const link = document.createElement('a');
+				link.href = url;
+				link.download = `${inspectionId}-compliance-report.pdf`;
+				link.click();
+				URL.revokeObjectURL(url);
+			} catch (error) {
+				window.alert(`Unable to generate report: ${error.message}`);
+			} finally {
+				generateReport.disabled = false;
+				generateReport.textContent = originalText;
+			}
+		});
+		id.textContent = inspectionId || 'Unavailable';
+		inspectionContext.textContent = inspectionId ? `Inspection ID: ${inspectionId}` : 'No inspection data available.';
+		if (!inspectionId) {
+			status.textContent = 'OCR unavailable';
+			status.className = 'badge badge-danger';
+			detections.innerHTML = '<p class="muted">No inspection ID was provided.</p>';
+			return;
+		}
+		try {
+			const result = JSON.parse(sessionStorage.getItem(`ocr:${inspectionId}`) || 'null');
+			if (!result) throw new Error('OCR result was not found in this browser session.');
+			status.textContent = result.status || 'OCR completed';
+			status.className = 'badge badge-success';
+			const rows = (result.detections || []).map(detection => `<tr><td>${escapeHtml(detection.text || '')}</td><td>${detection.confidence == null ? 'Unavailable' : Number(detection.confidence).toFixed(3)}</td><td>${detection.bbox ? escapeHtml(JSON.stringify(detection.bbox)) : 'Unavailable'}</td></tr>`).join('');
+			detections.innerHTML = rows ? `<table><thead><tr><th>Detected text</th><th>Confidence</th><th>Bounding box</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="muted">OCR completed with no detected text.</p>';
+			const extractionResponse = await fetch(`${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}/extract`, { method: 'POST' });
+			const extraction = await extractionResponse.json();
+			if (!extractionResponse.ok) throw new Error(extraction.detail || `Extraction failed (${extractionResponse.status})`);
+			extractionStatus.textContent = extraction.status || 'Extraction completed';
+			extractionStatus.className = 'badge badge-success';
+			const declarationRows = Object.entries(extraction.declarations || {}).map(([field, declaration]) => declarationRow(field, declaration)).join('');
+			declarationFields.innerHTML = declarationRows ? `<table><thead><tr><th>Field</th><th>Value</th><th>Confidence</th><th>Status</th></tr></thead><tbody>${declarationRows}</tbody></table>` : '<p class="muted">No declarations were returned.</p>';
+			const complianceResponse = await fetch(`${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}/compliance`, { method: 'POST' });
+			const compliance = await complianceResponse.json();
+			if (!complianceResponse.ok) throw new Error(compliance.detail || `Compliance check failed (${complianceResponse.status})`);
+			complianceStatus.textContent = compliance.overall_status || 'Unavailable';
+			complianceStatus.className = `badge ${complianceBadgeClass(compliance.overall_status)}`;
+			complianceScore.textContent = `${Number(compliance.compliance_score || 0)}%`;
+			const complianceRows = (compliance.checks || []).map((check, index) => complianceRow(check, index)).join('');
+			complianceFields.innerHTML = complianceRows ? `<table><thead><tr><th>Field</th><th>Status</th><th>Reason</th><th>Rule ID</th><th>Rule version</th><th>Source text</th><th>Confidence</th><th>Evidence</th></tr></thead><tbody>${complianceRows}</tbody></table>` : '<p class="muted">No compliance checks were returned.</p>';
+			document.querySelectorAll('[data-evidence-index]').forEach(button => button.addEventListener('click', () => showEvidence(compliance.checks[Number(button.dataset.evidenceIndex)], inspectionId)));
+		} catch (error) {
+			status.textContent = 'OCR unavailable';
+			status.className = 'badge badge-danger';
+			detections.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+			extractionStatus.textContent = 'Extraction unavailable';
+			extractionStatus.className = 'badge badge-danger';
+			declarationFields.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+			complianceStatus.textContent = 'Compliance unavailable';
+			complianceStatus.className = 'badge badge-danger';
+			complianceFields.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+		}
+	});
+
+	function escapeHtml(value) {
+		return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+	}
+
+	function confidenceText(value) {
+		return value == null ? 'Unavailable' : `${(Number(value) * 100).toFixed(1)}%`;
+	}
+
+	function declarationRow(field, declaration) {
+		const statusClass = declaration.status === 'detected' ? 'badge-success' : 'badge-warning';
+		return `<tr><td>${escapeHtml(field)}</td><td>${escapeHtml(declaration.value ?? 'Not detected')}</td><td>${confidenceText(declaration.confidence)}</td><td><span class="badge ${statusClass}">${escapeHtml(declaration.status || 'not_detected')}</span></td></tr>`;
+	}
+
+	function complianceRow(check, index) {
+		const evidence = check.evidence_bbox ? `<button class="btn" type="button" data-evidence-index="${index}">Evidence</button>` : 'Evidence region unavailable';
+		return `<tr><td>${escapeHtml(check.field_name || check.field || '')}</td><td>${escapeHtml(check.status || '')}</td><td>${escapeHtml(check.reason || '')}</td><td>${escapeHtml(check.rule_id || '')}</td><td>${escapeHtml(check.rule_version || '')}</td><td>${check.source_text ? escapeHtml(check.source_text) : 'Unavailable'}</td><td>${confidenceText(check.confidence)}</td><td>${evidence}</td></tr>`;
+	}
+
+	function complianceBadgeClass(status) {
+		if (status === 'COMPLIANT') return 'badge-success';
+		if (status === 'NON_COMPLIANT') return 'badge-danger';
+		return 'badge-warning';
+	}
+
+	function showEvidence(check, inspectionId) {
+		const content = document.getElementById('evidenceContent');
+		if (!check.evidence_bbox) {
+			content.innerHTML = '<p class="muted">Evidence region unavailable — manual verification required.</p>';
+			return;
+		}
+		content.innerHTML = `<p><strong>${escapeHtml(check.field_name || check.field || '')}</strong> · ${escapeHtml(check.source_text || 'Source text unavailable')}</p><div style="position:relative;max-width:724px"><img id="evidenceImage" src="${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}/image" alt="Uploaded inspection package" style="display:block;width:100%;height:auto"><canvas id="evidenceCanvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas></div>`;
+		const image = document.getElementById('evidenceImage');
+		image.addEventListener('load', () => drawEvidence(image, check.evidence_bbox));
+	}
+
+	function drawEvidence(image, bbox) {
+		const canvas = document.getElementById('evidenceCanvas');
+		const points = Array.isArray(bbox) ? bbox.flat(Infinity) : [];
+		if (points.length < 4) return;
+		const coordinates = [];
+		for (let index = 0; index + 1 < points.length; index += 2) coordinates.push([Number(points[index]), Number(points[index + 1])]);
+		const scaleX = image.clientWidth / image.naturalWidth;
+		const scaleY = image.clientHeight / image.naturalHeight;
+		canvas.width = image.clientWidth;
+		canvas.height = image.clientHeight;
+		const context = canvas.getContext('2d');
+		context.fillStyle = 'rgba(217, 91, 79, .18)';
+		context.strokeStyle = '#c73c3c';
+		context.lineWidth = 3;
+		context.beginPath();
+		coordinates.forEach(([x, y], index) => index ? context.lineTo(x * scaleX, y * scaleY) : context.moveTo(x * scaleX, y * scaleY));
+		context.closePath(); context.fill(); context.stroke();
+	}
+</script></body></html>
