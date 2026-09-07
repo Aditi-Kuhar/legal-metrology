@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from io import BytesIO
 from threading import Lock
 from typing import Any
@@ -16,6 +17,7 @@ from backend.services.inspection_service import (
 
 _ocr_instance: Any | None = None
 _ocr_lock = Lock()
+logger = logging.getLogger(__name__)
 
 
 def _inspection_exists(inspection_id: str) -> bool:
@@ -160,6 +162,7 @@ async def run_ocr(inspection_id: str, image: UploadFile) -> dict[str, object]:
     except HTTPException:
         raise
     except Exception as error:
+        logger.exception("OCR processing failed for inspection_id=%s", inspection_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="OCR processing failed",
