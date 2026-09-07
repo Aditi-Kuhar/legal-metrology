@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import resource
 from io import BytesIO
 from threading import Lock
 from typing import Any
@@ -151,13 +152,35 @@ async def run_ocr(inspection_id: str, image: UploadFile) -> dict[str, object]:
             detail="Uploaded file is not a valid image",
         ) from error
 
+    image_paths = list(UPLOAD_DIR.glob(f"{inspection_id}_*"))
+    max_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    logger.warning(
+        "Starting PaddleOCR inference for inspection_id=%s image_path=%s "
+        "image_size=%sx%s image_bytes=%s max_rss=%s",
+        inspection_id,
+        image_paths[0] if image_paths else "unknown",
+        image_data.width,
+        image_data.height,
+        len(content),
+        max_rss,
+    )
+
     try:
         ocr = _get_ocr()
         image_array = np.asarray(image_data)
-        if hasattr(ocr, "predict"):
-            raw_results = ocr.predict(input=image_array)
-        else:
-            raw_results = ocr.ocr(image_array, cls=True)
+        try:
+            if hasattr(ocr, "predict"):
+                raw_results = ocr.predict(input=image_array)
+            else:
+                raw_results = ocr.ocr(image_array, cls=True)
+        except Exception as error:
+            logger.exception(
+                "PaddleOCR inference failed for inspection_id=%s "
+                "exception_type=%s",
+                inspection_id,
+                type(error).__name__,
+            )
+            raise
         detections = _normalise_results(raw_results)
     except HTTPException:
         raise
