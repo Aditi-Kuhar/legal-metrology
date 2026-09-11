@@ -113,6 +113,7 @@ def get_saved_inspection(inspection_id: str) -> dict[str, Any] | None:
         ).fetchone()
     if row is None:
         return None
+    uploaded_images = json.loads(row["uploaded_images"])
     return {
         "inspection_id": row["inspection_id"],
         "context": {
@@ -121,11 +122,39 @@ def get_saved_inspection(inspection_id: str) -> dict[str, Any] | None:
             "manufacturer": row["manufacturer"],
             "inspection_place": row["inspection_place"],
             "inspection_date": row["inspection_date"],
-            "uploaded_images": json.loads(row["uploaded_images"]),
+            "uploaded_image": uploaded_images[0] if uploaded_images else None,
+            "uploaded_images": uploaded_images,
         },
         "ocr_result": json.loads(row["ocr_result"]),
         "extraction_result": json.loads(row["extraction_result"]),
         "compliance_result": json.loads(row["compliance_result"]),
+    }
+
+
+def get_saved_inspection_detail(inspection_id: str) -> dict[str, Any] | None:
+    saved = get_saved_inspection(inspection_id)
+    if saved is None:
+        return None
+
+    compliance = saved["compliance_result"]
+    checks = compliance.get("checks", [])
+    return {
+        "inspection_id": saved["inspection_id"],
+        "product_category": saved["context"]["product_category"],
+        "product_name": saved["context"]["product_name"],
+        "inspection_metadata": {
+            key: saved["context"][key]
+            for key in ("manufacturer", "inspection_place", "inspection_date")
+        },
+        "uploaded_images": saved["context"]["uploaded_images"],
+        "ocr_result": saved["ocr_result"],
+        "extraction_result": saved["extraction_result"],
+        "compliance_result": compliance,
+        "violations": [check for check in checks if check.get("status") == "VIOLATION"],
+        "review_required_items": [check for check in checks if check.get("status") == "REVIEW_REQUIRED"],
+        "evidence": [check for check in checks if check.get("evidence_bbox") is not None],
+        "status": compliance.get("overall_status"),
+        "score": compliance.get("compliance_score"),
     }
 
 

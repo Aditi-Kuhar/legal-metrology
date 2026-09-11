@@ -15,7 +15,6 @@
 		const declarationFields = document.getElementById('declarationFields');
 		const inspectionContext = document.getElementById('inspectionContext');
 		const complianceStatus = document.getElementById('complianceStatus');
-		const complianceScore = document.getElementById('complianceScore');
 		const complianceFields = document.getElementById('complianceFields');
 		const generateReport = document.getElementById('generateReport');
 		generateReport.addEventListener('click', async () => {
@@ -52,28 +51,26 @@
 			return;
 		}
 		try {
+			const savedResponse = await fetch(`${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}`);
+			if (savedResponse.ok) {
+				renderInspectionResult(await savedResponse.json(), inspectionId);
+				return;
+			}
+			if (savedResponse.status !== 404) {
+				const payload = await savedResponse.json().catch(() => ({}));
+				throw new Error(payload.detail || `Unable to load inspection (${savedResponse.status})`);
+			}
 			const result = JSON.parse(sessionStorage.getItem(`ocr:${inspectionId}`) || 'null');
 			if (!result) throw new Error('OCR result was not found in this browser session.');
-			status.textContent = result.status || 'OCR completed';
-			status.className = 'badge badge-success';
-			const rows = (result.detections || []).map(detection => `<tr><td>${escapeHtml(detection.text || '')}</td><td>${detection.confidence == null ? 'Unavailable' : Number(detection.confidence).toFixed(3)}</td><td>${detection.bbox ? escapeHtml(JSON.stringify(detection.bbox)) : 'Unavailable'}</td></tr>`).join('');
-			detections.innerHTML = rows ? `<table><thead><tr><th>Detected text</th><th>Confidence</th><th>Bounding box</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="muted">OCR completed with no detected text.</p>';
+			renderOcr(result);
 			const extractionResponse = await fetch(`${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}/extract`, { method: 'POST' });
 			const extraction = await extractionResponse.json();
 			if (!extractionResponse.ok) throw new Error(extraction.detail || `Extraction failed (${extractionResponse.status})`);
-			extractionStatus.textContent = extraction.status || 'Extraction completed';
-			extractionStatus.className = 'badge badge-success';
-			const declarationRows = Object.entries(extraction.declarations || {}).map(([field, declaration]) => declarationRow(field, declaration)).join('');
-			declarationFields.innerHTML = declarationRows ? `<table><thead><tr><th>Field</th><th>Value</th><th>Confidence</th><th>Status</th></tr></thead><tbody>${declarationRows}</tbody></table>` : '<p class="muted">No declarations were returned.</p>';
+			renderExtraction(extraction);
 			const complianceResponse = await fetch(`${window.API_BASE_URL}/api/inspections/${encodeURIComponent(inspectionId)}/compliance`, { method: 'POST' });
 			const compliance = await complianceResponse.json();
 			if (!complianceResponse.ok) throw new Error(compliance.detail || `Compliance check failed (${complianceResponse.status})`);
-			complianceStatus.textContent = compliance.overall_status || 'Unavailable';
-			complianceStatus.className = `badge ${complianceBadgeClass(compliance.overall_status)}`;
-			complianceScore.textContent = `${Number(compliance.compliance_score || 0)}%`;
-			const complianceRows = (compliance.checks || []).map((check, index) => complianceRow(check, index)).join('');
-			complianceFields.innerHTML = complianceRows ? `<table><thead><tr><th>Field</th><th>Status</th><th>Reason</th><th>Rule ID</th><th>Rule version</th><th>Source text</th><th>Confidence</th><th>Evidence</th></tr></thead><tbody>${complianceRows}</tbody></table>` : '<p class="muted">No compliance checks were returned.</p>';
-			document.querySelectorAll('[data-evidence-index]').forEach(button => button.addEventListener('click', () => showEvidence(compliance.checks[Number(button.dataset.evidenceIndex)], inspectionId)));
+			renderCompliance(compliance, inspectionId);
 		} catch (error) {
 			status.textContent = 'OCR unavailable';
 			status.className = 'badge badge-danger';
@@ -86,6 +83,44 @@
 			complianceFields.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
 		}
 	});
+
+	function renderInspectionResult(result, inspectionId) {
+		const metadata = result.inspection_metadata || {};
+		document.getElementById('inspectionContext').textContent = `${result.product_name || 'Inspection'} · ${result.product_category || 'Category unavailable'} · ${metadata.inspection_date || 'Date unavailable'}`;
+		renderOcr(result.ocr_result || {});
+		renderExtraction(result.extraction_result || {});
+		renderCompliance(result.compliance_result || {}, inspectionId);
+	}
+
+	function renderOcr(result) {
+		const status = document.getElementById('ocrStatus');
+		const detections = document.getElementById('ocrDetections');
+		status.textContent = result.status || 'OCR completed';
+		status.className = 'badge badge-success';
+		const rows = (result.detections || []).map(detection => `<tr><td>${escapeHtml(detection.text || '')}</td><td>${detection.confidence == null ? 'Unavailable' : Number(detection.confidence).toFixed(3)}</td><td>${detection.bbox ? escapeHtml(JSON.stringify(detection.bbox)) : 'Unavailable'}</td></tr>`).join('');
+		detections.innerHTML = rows ? `<table><thead><tr><th>Detected text</th><th>Confidence</th><th>Bounding box</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="muted">OCR completed with no detected text.</p>';
+	}
+
+	function renderExtraction(result) {
+		const extractionStatus = document.getElementById('extractionStatus');
+		const declarationFields = document.getElementById('declarationFields');
+		extractionStatus.textContent = result.status || 'Extraction completed';
+		extractionStatus.className = 'badge badge-success';
+		const declarationRows = Object.entries(result.declarations || {}).map(([field, declaration]) => declarationRow(field, declaration)).join('');
+		declarationFields.innerHTML = declarationRows ? `<table><thead><tr><th>Field</th><th>Value</th><th>Confidence</th><th>Status</th></tr></thead><tbody>${declarationRows}</tbody></table>` : '<p class="muted">No declarations were returned.</p>';
+	}
+
+	function renderCompliance(result, inspectionId) {
+		const complianceStatus = document.getElementById('complianceStatus');
+		const complianceScore = document.getElementById('complianceScore');
+		const complianceFields = document.getElementById('complianceFields');
+		complianceStatus.textContent = result.overall_status || 'Unavailable';
+		complianceStatus.className = `badge ${complianceBadgeClass(result.overall_status)}`;
+		complianceScore.textContent = `${Number(result.compliance_score || 0)}%`;
+		const complianceRows = (result.checks || []).map((check, index) => complianceRow(check, index)).join('');
+		complianceFields.innerHTML = complianceRows ? `<table><thead><tr><th>Field</th><th>Status</th><th>Reason</th><th>Rule ID</th><th>Rule version</th><th>Source text</th><th>Confidence</th><th>Evidence</th></tr></thead><tbody>${complianceRows}</tbody></table>` : '<p class="muted">No compliance checks were returned.</p>';
+		document.querySelectorAll('[data-evidence-index]').forEach(button => button.addEventListener('click', () => showEvidence(result.checks[Number(button.dataset.evidenceIndex)], inspectionId)));
+	}
 
 	function escapeHtml(value) {
 		return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));

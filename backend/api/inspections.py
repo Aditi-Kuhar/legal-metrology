@@ -9,7 +9,12 @@ from backend.services.inspection_service import get_inspection_context, receive_
 from backend.services.extraction_service import extract_declarations, get_ocr_result, store_ocr_result
 from backend.services.compliance_service import check_compliance
 from backend.services.report_service import generate_report
-from backend.services.persistence_service import delete_inspection, list_inspections, save_completed_inspection
+from backend.services.persistence_service import (
+    delete_inspection,
+    get_saved_inspection_detail,
+    list_inspections,
+    save_completed_inspection,
+)
 
 router = APIRouter(prefix="/api/inspections", tags=["inspections"])
 INSPECTION_NOT_FOUND = "Inspection not found"
@@ -82,6 +87,16 @@ async def inspect_compliance(inspection_id: str) -> dict[str, object]:
 @router.get("")
 async def get_inspections() -> dict[str, object]:
     return {"inspections": list_inspections()}
+
+
+@router.get("/{inspection_id}")
+async def get_inspection(inspection_id: str) -> dict[str, object]:
+    if not inspection_id.startswith("LM-"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=INSPECTION_NOT_FOUND)
+    inspection = get_saved_inspection_detail(inspection_id)
+    if inspection is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=INSPECTION_NOT_FOUND)
+    return inspection
 
 
 @router.delete("/{inspection_id}")

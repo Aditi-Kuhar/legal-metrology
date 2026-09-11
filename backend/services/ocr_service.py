@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import resource
+import traceback
 from io import BytesIO
 from threading import Lock
 from typing import Any
@@ -168,12 +169,31 @@ async def run_ocr(inspection_id: str, image: UploadFile) -> dict[str, object]:
     try:
         ocr = _get_ocr()
         image_array = np.asarray(image_data)
+        print(
+            "OCR_INFERENCE_BEFORE "
+            f"inspection_id={inspection_id} "
+            f"image_path={image_paths[0] if image_paths else 'unknown'} "
+            f"image_size={image_data.width}x{image_data.height} "
+            f"image_bytes={len(content)} max_rss={max_rss}",
+            flush=True,
+        )
         try:
             if hasattr(ocr, "predict"):
                 raw_results = ocr.predict(input=image_array)
             else:
                 raw_results = ocr.ocr(image_array, cls=True)
+            print(
+                f"OCR_INFERENCE_AFTER inspection_id={inspection_id}",
+                flush=True,
+            )
         except Exception as error:
+            print(
+                f"OCR_INFERENCE_EXCEPTION inspection_id={inspection_id} "
+                f"exception_type={type(error).__name__} "
+                f"message={error}",
+                flush=True,
+            )
+            traceback.print_exc()
             logger.exception(
                 "PaddleOCR inference failed for inspection_id=%s "
                 "exception_type=%s",

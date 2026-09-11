@@ -202,6 +202,9 @@
         startButton.disabled = true;
         startButton.innerHTML = '<span class="spinner" aria-hidden="true"></span> Starting inspection';
         processingNote.classList.add('visible');
+        imageCards.forEach(card => {
+          if (card.querySelector('.image-input').files.length > 0) card.classList.add('has-file');
+        });
 
         try {
           processingNote.textContent = 'Uploading...';
